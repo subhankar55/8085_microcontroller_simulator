@@ -1,0 +1,18 @@
+{
+  "name": "8085-simulator-native",
+  "version": "0.1.0",
+  "private": true,
+  "main": "Core_engine/build/Release/8085_simulator.node",
+  "scripts": {
+    "build": "cmake-js compile --directory Core_engine",
+    "rebuild": "cmake-js rebuild --directory Core_engine",
+    "start": "node backend/server.js"
+  },
+  "dependencies": {
+    "express": "^5.1.0",
+    "node-addon-api": "^8.5.0"
+  },
+  "devDependencies": {
+    "cmake-js": "^7.3.0"
+  }
+}
