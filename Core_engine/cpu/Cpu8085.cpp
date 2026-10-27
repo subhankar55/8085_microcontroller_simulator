@@ -105,27 +105,28 @@ void Cpu8085::UpdateFlags(uint8_t result) {
     state_.parity = EvenParity(result);
 }
 
-void Cpu8085::UpdateFlagsArithmetic(uint8_t reg, uint8_t operand, uint16_t result, bool subtraction) {
+void Cpu8085::UpdateFlagsArithmetic(uint8_t reg, uint8_t operand, uint16_t result, bool subtraction,
+    bool carryIn) {
     const auto value = static_cast<uint8_t>(result);
     UpdateFlags(value);
     if (subtraction) {
-        state_.auxiliaryCarry = (reg & 0x0F) < (operand & 0x0F);
-        state_.carry = reg < operand;
+        state_.auxiliaryCarry = (reg & 0x0F) < ((operand & 0x0F) + carryIn);
+        state_.carry = reg < (static_cast<uint16_t>(operand) + carryIn);
     } else {
-        state_.auxiliaryCarry = ((reg & 0x0F) + (operand & 0x0F)) > 0x0F;
+        state_.auxiliaryCarry = ((reg & 0x0F) + (operand & 0x0F) + carryIn) > 0x0F;
         state_.carry = result > 0xFF;
     }
 }
 
 void Cpu8085::Push(uint16_t value) {
     state_.sp = static_cast<uint16_t>(state_.sp - 2);
-    memory_.Write(state_.sp, static_cast<uint8_t>(value >> 8));
-    memory_.Write(static_cast<uint16_t>(state_.sp + 1), static_cast<uint8_t>(value));
+    memory_.Write(state_.sp, static_cast<uint8_t>(value));
+    memory_.Write(static_cast<uint16_t>(state_.sp + 1), static_cast<uint8_t>(value >> 8));
 }
 
 uint16_t Cpu8085::Pop() {
-    const auto value = static_cast<uint16_t>((memory_.Read(state_.sp) << 8) |
-        memory_.Read(static_cast<uint16_t>(state_.sp + 1)));
+    const auto value = static_cast<uint16_t>(memory_.Read(state_.sp) |
+        (memory_.Read(static_cast<uint16_t>(state_.sp + 1)) << 8));
     state_.sp = static_cast<uint16_t>(state_.sp + 2);
     return value;
 }
@@ -188,22 +189,24 @@ void Cpu8085::Execute(uint8_t opcode) {
     // Part 2: arithmetic.
     case 0x80: case 0x81: case 0x82: case 0x83: case 0x84: case 0x85: case 0x86: case 0x87:
     case 0x88: case 0x89: case 0x8A: case 0x8B: case 0x8C: case 0x8D: case 0x8E: case 0x8F: {
-        const auto operand = static_cast<uint8_t>(ReadOperand(opcode & 7) + ((opcode & 8) != 0 && state_.carry));
-        const auto result = static_cast<uint16_t>(state_.a + operand);
-        UpdateFlagsArithmetic(state_.a, operand, result, false);
+        const auto operand = ReadOperand(opcode & 7);
+        const bool carryIn = (opcode & 8) != 0 && state_.carry;
+        const auto result = static_cast<uint16_t>(state_.a + operand + carryIn);
+        UpdateFlagsArithmetic(state_.a, operand, result, false, carryIn);
         state_.a = static_cast<uint8_t>(result);
         break;
     }
     case 0x90: case 0x91: case 0x92: case 0x93: case 0x94: case 0x95: case 0x96: case 0x97:
     case 0x98: case 0x99: case 0x9A: case 0x9B: case 0x9C: case 0x9D: case 0x9E: case 0x9F: {
-        const auto operand = static_cast<uint8_t>(ReadOperand(opcode & 7) + ((opcode & 8) != 0 && state_.carry));
-        const auto result = static_cast<uint8_t>(state_.a - operand);
-        UpdateFlagsArithmetic(state_.a, operand, result, true);
-        state_.a = result;
+        const auto operand = ReadOperand(opcode & 7);
+        const bool carryIn = (opcode & 8) != 0 && state_.carry;
+        const auto result = static_cast<uint16_t>(state_.a - operand - carryIn);
+        UpdateFlagsArithmetic(state_.a, operand, result, true, carryIn);
+        state_.a = static_cast<uint8_t>(result);
         break;
     }
-    case 0xC6: case 0xCE: { const auto operand = static_cast<uint8_t>(FetchByte() + ((opcode & 8) != 0 && state_.carry)); const auto result = static_cast<uint16_t>(state_.a + operand); UpdateFlagsArithmetic(state_.a, operand, result, false); state_.a = static_cast<uint8_t>(result); break; }
-    case 0xD6: case 0xDE: { const auto operand = static_cast<uint8_t>(FetchByte() + ((opcode & 8) != 0 && state_.carry)); const auto result = static_cast<uint8_t>(state_.a - operand); UpdateFlagsArithmetic(state_.a, operand, result, true); state_.a = result; break; }
+    case 0xC6: case 0xCE: { const auto operand = FetchByte(); const bool carryIn = (opcode & 8) != 0 && state_.carry; const auto result = static_cast<uint16_t>(state_.a + operand + carryIn); UpdateFlagsArithmetic(state_.a, operand, result, false, carryIn); state_.a = static_cast<uint8_t>(result); break; }
+    case 0xD6: case 0xDE: { const auto operand = FetchByte(); const bool carryIn = (opcode & 8) != 0 && state_.carry; const auto result = static_cast<uint16_t>(state_.a - operand - carryIn); UpdateFlagsArithmetic(state_.a, operand, result, true, carryIn); state_.a = static_cast<uint8_t>(result); break; }
     case 0x04: case 0x0C: case 0x14: case 0x1C: case 0x24: case 0x2C: case 0x34: case 0x3C: { const auto oldCarry = state_.carry; const auto old = ReadOperand((opcode >> 3) & 7); const auto result = static_cast<uint8_t>(old + 1); WriteOperand((opcode >> 3) & 7, result); UpdateFlagsArithmetic(old, 1, static_cast<uint16_t>(old + 1), false); state_.carry = oldCarry; break; }
     case 0x05: case 0x0D: case 0x15: case 0x1D: case 0x25: case 0x2D: case 0x35: case 0x3D: { const auto oldCarry = state_.carry; const auto old = ReadOperand((opcode >> 3) & 7); const auto result = static_cast<uint8_t>(old - 1); WriteOperand((opcode >> 3) & 7, result); UpdateFlagsArithmetic(old, 1, result, true); state_.carry = oldCarry; break; }
     case 0x03: case 0x13: case 0x23: case 0x33: SetPair((opcode >> 4) & 3, static_cast<uint16_t>(GetPair((opcode >> 4) & 3) + 1)); break;

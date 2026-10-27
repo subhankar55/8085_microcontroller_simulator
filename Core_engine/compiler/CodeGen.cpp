@@ -177,7 +177,7 @@ std::vector<uint8_t> CodeGen::Encode(const Instruction& instruction) const {
         mnemonic == "RPO" || mnemonic == "RPE" || mnemonic == "RP" || mnemonic == "RM") {
         const bool splitCondition = mnemonic == "J" || mnemonic == "C" || mnemonic == "R";
         const bool isReturn = (!splitCondition && mnemonic[0] == 'R') || mnemonic == "R";
-        Parser::Require(tokens, splitCondition ? (isReturn ? 2 : 3) : 2, mnemonic);
+        Parser::Require(tokens, splitCondition ? (isReturn ? 2 : 3) : (isReturn ? 1 : 2), mnemonic);
         const auto conditionName = splitCondition ? tokens[1] : mnemonic.substr(1);
         const auto condition = ConditionCode(conditionName);
         if (condition < 0) throw std::invalid_argument("Invalid condition: " + tokens[1]);

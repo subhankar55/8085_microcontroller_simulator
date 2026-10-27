@@ -56,7 +56,8 @@ private:
     uint8_t ReadOperand(uint8_t code) const;
     void WriteOperand(uint8_t code, uint8_t value);
     void UpdateFlags(uint8_t result);
-    void UpdateFlagsArithmetic(uint8_t reg, uint8_t operand, uint16_t result, bool subtraction);
+    void UpdateFlagsArithmetic(uint8_t reg, uint8_t operand, uint16_t result, bool subtraction,
+        bool carryIn = false);
     void Push(uint16_t value);
     uint16_t Pop();
     bool ConditionMet(uint8_t condition) const;
