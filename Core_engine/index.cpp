@@ -1,3 +1,6 @@
+// N-Api wrapper
+// wraps the compiler,cpu and memory module in a Node-Api class and exposes methods such as compile,run , step etc.
+
 #include <napi.h>
 
 #include "compiler/Assembler.h"

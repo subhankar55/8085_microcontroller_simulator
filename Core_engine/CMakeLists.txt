@@ -5,36 +5,46 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-if(NOT CMAKE_JS_INC)
-    message(FATAL_ERROR "Configure this project with cmake-js so CMAKE_JS_INC is available")
-endif()
-
-find_path(NODE_ADDON_API_INCLUDE_DIR napi.h
-    PATHS
-        "${CMAKE_CURRENT_SOURCE_DIR}/../node_modules/node-addon-api"
-        "${CMAKE_JS_INC}/../node-addon-api"
-    NO_DEFAULT_PATH
-    REQUIRED
-)
-
-add_library(${PROJECT_NAME} SHARED
-    index.cpp
-    compiler/Assembler.cpp
+set(CORE_SOURCES
+    compiler/Lexer.cpp
+    compiler/Parser.cpp
+    compiler/SymbolTable.cpp
+    compiler/CodeGen.cpp
+    compiler/main.cpp
     memory/Memory.cpp
     cpu/Cpu8085.cpp
-    ${CMAKE_JS_SRC}
 )
 
-target_include_directories(${PROJECT_NAME} PRIVATE
-    ${CMAKE_JS_INC}
-    ${NODE_ADDON_API_INCLUDE_DIR}
-    ${CMAKE_CURRENT_SOURCE_DIR}
-)
+if(CMAKE_JS_INC)
+    find_path(NODE_ADDON_API_INCLUDE_DIR napi.h
+        PATHS
+            "${CMAKE_CURRENT_SOURCE_DIR}/../node_modules/node-addon-api"
+            "${CMAKE_JS_INC}/../node-addon-api"
+        NO_DEFAULT_PATH
+        REQUIRED
+    )
 
-target_compile_definitions(${PROJECT_NAME} PRIVATE NAPI_CPP_EXCEPTIONS)
-target_link_libraries(${PROJECT_NAME} ${CMAKE_JS_LIB})
+    add_library(${PROJECT_NAME} SHARED
+        index.cpp
+        ${CORE_SOURCES}
+        ${CMAKE_JS_SRC}
+    )
 
-set_target_properties(${PROJECT_NAME} PROPERTIES
-    PREFIX ""
-    SUFFIX ".node"
-)
+    target_include_directories(${PROJECT_NAME} PRIVATE
+        ${CMAKE_JS_INC}
+        ${NODE_ADDON_API_INCLUDE_DIR}
+        ${CMAKE_CURRENT_SOURCE_DIR}
+    )
+
+    target_compile_definitions(${PROJECT_NAME} PRIVATE NAPI_CPP_EXCEPTIONS)
+    target_link_libraries(${PROJECT_NAME} ${CMAKE_JS_LIB})
+
+    set_target_properties(${PROJECT_NAME} PROPERTIES
+        PREFIX ""
+        SUFFIX ".node"
+    )
+else()
+    message(STATUS "CMAKE_JS_INC not set; building the standalone 8085 core library")
+    add_library(${PROJECT_NAME}_core STATIC ${CORE_SOURCES})
+    target_include_directories(${PROJECT_NAME}_core PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+endif()
