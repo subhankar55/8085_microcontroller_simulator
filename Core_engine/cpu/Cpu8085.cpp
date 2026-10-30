@@ -31,7 +31,13 @@ Cpu8085::Cpu8085(Memory& memory) : memory_(memory) {}
 
 CpuState Cpu8085::Step() {
     std::lock_guard lock(mutex_);
-    if (isHalted_.load() || breakpoints_.find(state_.pc) != breakpoints_.end()) {
+    if (isHalted_.load()) {
+        return state_;
+    }
+    if (breakpoints_.find(state_.pc) != breakpoints_.end()) {
+        isHalted_.store(true);
+        breakpointHit_ = true;
+        state_.halted = true;
         return state_;
     }
     Execute(FetchByte());
@@ -262,11 +268,22 @@ void Cpu8085::Reset() {
     std::lock_guard lock(mutex_);
     state_ = CpuState{};
     isHalted_.store(false);
+    breakpointHit_ = false;
 }
 
 void Cpu8085::AddBreakpoint(uint16_t address) {
     std::lock_guard lock(mutex_);
     breakpoints_.insert(address);
+}
+
+void Cpu8085::RemoveBreakpoint(uint16_t address) {
+    std::lock_guard lock(mutex_);
+    breakpoints_.erase(address);
+    if (breakpointHit_ && state_.pc == address) {
+        breakpointHit_ = false;
+        isHalted_.store(false);
+        state_.halted = false;
+    }
 }
 
 void Cpu8085::SetRegister(const std::string& name, uint16_t value) {

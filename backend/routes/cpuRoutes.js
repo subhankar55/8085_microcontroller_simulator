@@ -9,6 +9,7 @@ router.post('/step', cpuController.step);
 router.post('/reset', cpuController.reset);
 router.post('/pause', cpuController.pause);
 router.post('/breakpoint', cpuController.addBreakpoint);
+router.delete('/breakpoint', cpuController.removeBreakpoint);
 router.get('/memory/:address', cpuController.readMemory);
 router.post('/memory', cpuController.writeMemory);
 router.post('/register', cpuController.overrideRegister);

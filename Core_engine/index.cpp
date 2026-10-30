@@ -24,6 +24,7 @@ public:
             InstanceMethod("Reset", &SimulatorWrapper::Reset),
             InstanceMethod("Pause", &SimulatorWrapper::Pause),
             InstanceMethod("AddBreakpoint", &SimulatorWrapper::AddBreakpoint),
+            InstanceMethod("RemoveBreakpoint", &SimulatorWrapper::RemoveBreakpoint),
             InstanceMethod("InspectMemory", &SimulatorWrapper::InspectMemory),
             InstanceMethod("InjectMemory", &SimulatorWrapper::InjectMemory),
             InstanceMethod("SetRegister", &SimulatorWrapper::SetRegister),
@@ -102,6 +103,12 @@ private:
     Napi::Value AddBreakpoint(const Napi::CallbackInfo& info) {
         RequireArguments(info, 1, "AddBreakpoint expects an address");
         cpu_.AddBreakpoint(ToAddress(info[0]));
+        return info.Env().Undefined();
+    }
+
+    Napi::Value RemoveBreakpoint(const Napi::CallbackInfo& info) {
+        RequireArguments(info, 1, "RemoveBreakpoint expects an address");
+        cpu_.RemoveBreakpoint(ToAddress(info[0]));
         return info.Env().Undefined();
     }
 

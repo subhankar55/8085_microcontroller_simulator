@@ -40,6 +40,7 @@ public:
     CpuState Step();
     void Reset();
     void AddBreakpoint(uint16_t address);
+    void RemoveBreakpoint(uint16_t address);
     void SetRegister(const std::string& name, uint16_t value);
     CpuState GetState() const;
     void SetIoHandlers(std::function<uint8_t(uint8_t)> inputHandler,
@@ -68,6 +69,7 @@ private:
     Memory& memory_;
     CpuState state_;
     std::set<uint16_t> breakpoints_;
+    bool breakpointHit_ = false;
     std::function<uint8_t(uint8_t)> inputHandler_;
     std::function<void(uint8_t, uint8_t)> outputHandler_;
     std::atomic<bool> isHalted_{false};

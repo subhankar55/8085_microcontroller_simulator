@@ -37,6 +37,7 @@ const compile = asyncHandler(async (request, response) => {
       message: 'Assembly compiled and loaded into core engine memory',
       address: loadAddress,
       byteLength: machineCode.length,
+      machineCode: Array.from(machineCode),
       registers: getRegisterState(engine),
     });
   } catch (error) {
@@ -108,6 +109,17 @@ const addBreakpoint = asyncHandler(async (request, response) => {
   }
 });
 
+const removeBreakpoint = asyncHandler(async (request, response) => {
+  try {
+    const engine = getCoreEngine();
+    const address = parseNumber(request.body?.address, 'address');
+    engine.RemoveBreakpoint(address);
+    return sendSuccess(response, { address });
+  } catch (error) {
+    return sendError(response, error);
+  }
+});
+
 const readMemory = asyncHandler(async (request, response) => {
   try {
     const engine = getCoreEngine();
@@ -158,6 +170,7 @@ export {
   reset,
   pause,
   addBreakpoint,
+  removeBreakpoint,
   readMemory,
   writeMemory,
   overrideRegister,
