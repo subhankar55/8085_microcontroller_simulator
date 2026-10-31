@@ -8,7 +8,7 @@ export { formatHex };
 
 export default function RegisterPanel({ registers }) {
   return (
-    <Panel eyebrow="CPU state" title="Registers">
+    <Panel className="register-panel" eyebrow="CPU state" title="Registers">
       <div className="register-grid">
         {registerNames.map((name) => (
           <div className="register-cell" key={name}>

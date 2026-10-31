@@ -3,7 +3,7 @@ import { formatHex } from './RegisterPanel.jsx';
 
 export default function MemoryPanel({ memory, address, onAddressChange, onRead, error }) {
   return (
-    <Panel eyebrow="Address space" title="Memory view" actions={<span className="panel-meta">HEX DUMP</span>}>
+    <Panel className="memory-panel" eyebrow="Address space" title="Memory view" actions={<span className="panel-meta">HEX DUMP</span>}>
       <div className="memory-controls">
         <label htmlFor="memory-address">Address</label>
         <input id="memory-address" inputMode="text" onChange={(event) => onAddressChange(event.target.value)} onKeyDown={(event) => event.key === 'Enter' && onRead()} placeholder="2000H" value={address} />

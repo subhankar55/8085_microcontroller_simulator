@@ -35,6 +35,7 @@ Thumbs.db
 # Environment and coverage files
 .env
 .env.*
+!.env.example
 coverage/
 build-coverage/
 /cpu/

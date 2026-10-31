@@ -6,12 +6,14 @@
 #include "compiler/Assembler.h"
 #include "cpu/Cpu8085.h"
 #include "memory/Memory.h"
+#include "io/IoBuffer.h"
 
 #include <atomic>
 #include <chrono>
 #include <cstdint>
 #include <memory>
 #include <mutex>
+#include <string>
 #include <thread>
 
 class SimulatorWrapper final : public Napi::ObjectWrap<SimulatorWrapper> {
@@ -29,11 +31,17 @@ public:
             InstanceMethod("InjectMemory", &SimulatorWrapper::InjectMemory),
             InstanceMethod("SetRegister", &SimulatorWrapper::SetRegister),
             InstanceMethod("GetRegisters", &SimulatorWrapper::GetRegisters),
+            InstanceMethod("EnqueueInput", &SimulatorWrapper::EnqueueInput),
+            InstanceMethod("DrainOutputs", &SimulatorWrapper::DrainOutputs),
         });
     }
 
     explicit SimulatorWrapper(const Napi::CallbackInfo& info)
-        : Napi::ObjectWrap<SimulatorWrapper>(info), cpu_(memory_) {}
+        : Napi::ObjectWrap<SimulatorWrapper>(info), cpu_(memory_) {
+        cpu_.SetIoHandlers(
+            [this](uint8_t port) { return ioBuffer_.ReadInput(port); },
+            [this](uint8_t port, uint8_t value) { ioBuffer_.WriteOutput(port, value); });
+    }
 
     ~SimulatorWrapper() override {
         PauseWorker();
@@ -92,6 +100,7 @@ private:
         PauseWorker();
         memory_.Reset();
         cpu_.Reset();
+        ioBuffer_.Reset();
         return info.Env().Undefined();
     }
 
@@ -139,6 +148,26 @@ private:
         return ToObject(info.Env(), cpu_.GetState());
     }
 
+    Napi::Value EnqueueInput(const Napi::CallbackInfo& info) {
+        RequireArguments(info, 2, "EnqueueInput expects port and value");
+        const auto port = ToByte(info[0], "Port");
+        const auto value = ToByte(info[1], "Value");
+        ioBuffer_.EnqueueInput(port, value);
+        return info.Env().Undefined();
+    }
+
+    Napi::Value DrainOutputs(const Napi::CallbackInfo& info) {
+        auto result = Napi::Array::New(info.Env());
+        const auto outputs = ioBuffer_.DrainOutputs();
+        for (std::size_t index = 0; index < outputs.size(); ++index) {
+            auto item = Napi::Object::New(info.Env());
+            item.Set("port", outputs[index].port);
+            item.Set("value", outputs[index].value);
+            result.Set(index, item);
+        }
+        return result;
+    }
+
     static void RequireArguments(const Napi::CallbackInfo& info, std::size_t count, const char* message) {
         if (info.Length() < count) throw Napi::TypeError::New(info.Env(), message);
     }
@@ -151,6 +180,13 @@ private:
     static std::size_t ToLength(const Napi::Value& value) {
         if (!value.IsNumber()) throw Napi::TypeError::New(value.Env(), "Length must be a number");
         return value.As<Napi::Number>().Uint32Value();
+    }
+
+    static uint8_t ToByte(const Napi::Value& value, const char* name) {
+        if (!value.IsNumber() || value.As<Napi::Number>().Uint32Value() > 0xFF) {
+            throw Napi::RangeError::New(value.Env(), std::string(name) + " must be 0..255");
+        }
+        return static_cast<uint8_t>(value.As<Napi::Number>().Uint32Value());
     }
 
     static Napi::Object ToObject(Napi::Env env, const simulator::CpuState& state) {
@@ -171,6 +207,7 @@ private:
     simulator::Memory memory_;
     simulator::Assembler assembler_;
     simulator::Cpu8085 cpu_;
+    simulator::IoBuffer ioBuffer_;
     std::atomic<bool> stopRequested_{false};
     std::thread worker_;
 };

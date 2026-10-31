@@ -3,6 +3,7 @@ import { asyncHandler } from '../utils/asyncHandler.js';
 import { sendError } from '../utils/errorResponse.js';
 import { sendSuccess } from '../utils/successResponse.js';
 import { broadcastRegisterState } from '../sockets/socketHandler.js';
+import { enqueueInput } from '../utils/ioQueue.js';
 
 function parseNumber(value, fieldName, maximum = 0xffff) {
   const parsed = typeof value === 'number' ? value : Number(value);
@@ -16,6 +17,12 @@ function parseNumber(value, fieldName, maximum = 0xffff) {
 
 function getRegisterState(engine) {
   return engine.GetRegisters();
+}
+
+function broadcastOutputs(engine) {
+  engine.DrainOutputs().forEach((output) => {
+    broadcastRegisterState({ io: { direction: 'out', ...output } });
+  });
 }
 
 // Replace these state mutations with calls to the native C++ addon or executable
@@ -49,10 +56,12 @@ const run = asyncHandler(async (_request, response) => {
   try {
     const engine = getCoreEngine();
     engine.Run((state) => {
+      broadcastOutputs(engine);
       broadcastRegisterState({
         registers: state,
         executionState: state.halted ? 'halted' : 'running',
       });
+
     });
     return sendSuccess(response, {
       executionState: 'running',
@@ -63,10 +72,25 @@ const run = asyncHandler(async (_request, response) => {
   }
 });
 
+const queueInput = asyncHandler(async (request, response) => {
+  try {
+    const result = await enqueueInput({
+      port: request.body?.port,
+      value: request.body?.value,
+      source: 'http',
+    });
+    broadcastRegisterState({ io: { direction: 'in', ...result } });
+    return sendSuccess(response, { queued: true, ...result });
+  } catch (error) {
+    return sendError(response, error);
+  }
+});
+
 const step = asyncHandler(async (_request, response) => {
   try {
     const engine = getCoreEngine();
     const registers = engine.Step();
+    broadcastOutputs(engine);
     broadcastRegisterState({ registers, executionState: registers.halted ? 'halted' : 'paused' });
     return sendSuccess(response, { registers, executionState: registers.halted ? 'halted' : 'paused' });
   } catch (error) {
@@ -174,4 +198,5 @@ export {
   readMemory,
   writeMemory,
   overrideRegister,
+  queueInput as enqueueInput,
 };

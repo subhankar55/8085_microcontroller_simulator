@@ -6,6 +6,7 @@ import cpuRoutes from './routes/cpuRoutes.js';
 import { registerSocketHandlers } from './sockets/socketHandler.js';
 import { sendError } from './utils/errorResponse.js';
 import { sendSuccess } from './utils/successResponse.js';
+import { enqueueInput } from './utils/ioQueue.js';
 
 const app = express();
 const httpServer = http.createServer(app);
@@ -27,7 +28,7 @@ app.use('/api/cpu', cpuRoutes);
 app.use((error, _request, response, _next) => {
   sendError(response, error);
 });
-registerSocketHandlers(io);
+registerSocketHandlers(io, enqueueInput);
 
 httpServer.listen(port, () => {
   console.log(`8085 simulator backend listening on port ${port}`);

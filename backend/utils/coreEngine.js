@@ -8,7 +8,12 @@ const defaultAddonPath = path.resolve(
   backendDirectory,
   '../../Core_engine/build/Release/8085_simulator.node',
 );
-const addonPath = process.env.CORE_ENGINE_PATH || defaultAddonPath;
+const configuredAddonPath = process.env.CORE_ENGINE_PATH;
+const addonPath = configuredAddonPath
+  ? (path.isAbsolute(configuredAddonPath)
+    ? configuredAddonPath
+    : path.resolve(process.cwd(), configuredAddonPath))
+  : defaultAddonPath;
 
 let engine;
 

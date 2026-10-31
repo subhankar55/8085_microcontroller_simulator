@@ -22,11 +22,13 @@ export function useSimulatorWebSocket() {
     socket.on('connect', () => setExecutionState('paused'));
     socket.on('disconnect', () => setExecutionState('disconnected'));
     socket.on('registerState', (payload) => {
-      if (!payload?.registers) return;
-      setRegisters((current) => ({ ...current, ...payload.registers }));
+      if (payload?.registers) setRegisters((current) => ({ ...current, ...payload.registers }));
       if (payload.executionState) setExecutionState(payload.executionState);
       if (payload.memory) setMemory(payload.memory);
       if (payload.io) setIoState((current) => ({ ...current, ...payload.io }));
+    });
+    socket.on('ioEvent', (event) => {
+      setIoState((current) => ({ ...current, ...event }));
     });
     return () => {
       socket.disconnect();
@@ -34,5 +36,9 @@ export function useSimulatorWebSocket() {
     };
   }, []);
 
-  return { registers, executionState, memory, ioState };
+  const sendIoInput = (port, value, onResult) => {
+    socketRef.current?.emit('ioInput', { port, value }, onResult);
+  };
+
+  return { registers, executionState, memory, ioState, sendIoInput };
 }

@@ -1,11 +1,21 @@
 let io;
 
-function registerSocketHandlers(socketIo) {
+function registerSocketHandlers(socketIo, enqueueInput) {
   io = socketIo;
 
   io.on('connection', (socket) => {
     socket.emit('registerState', {
       message: 'Connected to the 8085 simulator',
+    });
+
+    socket.on('ioInput', async (payload, acknowledge) => {
+      try {
+        const result = await enqueueInput(payload || {});
+        acknowledge?.({ success: true, data: result });
+        socket.emit('ioEvent', { direction: 'in', ...result });
+      } catch (error) {
+        acknowledge?.({ success: false, error: error.message });
+      }
     });
 
     socket.on('requestRegisterState', () => {

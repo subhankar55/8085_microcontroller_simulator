@@ -12,6 +12,7 @@ set(CORE_SOURCES
     compiler/CodeGen.cpp
     compiler/main.cpp
     memory/Memory.cpp
+    io/IoBuffer.cpp
     cpu/Cpu8085.cpp
 )
 

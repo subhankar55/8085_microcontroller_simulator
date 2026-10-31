@@ -48,7 +48,7 @@ function buildLineAddressMap(source, machineCode, loadAddress) {
 }
 
 export default function Dashboard() {
-  const { registers: liveRegisters, executionState } = useSimulatorWebSocket();
+  const { registers: liveRegisters, executionState, ioState, sendIoInput } = useSimulatorWebSocket();
   const [source, setSource] = useState(initialSource);
   const [registers, setRegisters] = useState(liveRegisters);
   const [machineCode, setMachineCode] = useState([]);
@@ -58,7 +58,8 @@ export default function Dashboard() {
   const [memoryError, setMemoryError] = useState('');
   const [breakpoints, setBreakpoints] = useState([]);
   const [consoleLines, setConsoleLines] = useState(['Simulator ready.', 'Compile a program to load it into memory.']);
-  const [ioInput, setIoInput] = useState('');
+  const [ioPort, setIoPort] = useState('01');
+  const [ioValue, setIoValue] = useState('');
   const [busy, setBusy] = useState(false);
   const [feedback, setFeedback] = useState({ message: 'Ready' });
   const editorRef = useRef(null);
@@ -67,6 +68,11 @@ export default function Dashboard() {
   const breakpointsRef = useRef([]);
 
   useEffect(() => setRegisters(liveRegisters), [liveRegisters]);
+  useEffect(() => {
+    if (ioState.direction === 'out' && Number.isInteger(ioState.port) && Number.isInteger(ioState.value)) {
+      log(`Output: port ${ioState.port.toString(16).toUpperCase().padStart(2, '0')}H = ${ioState.value.toString(16).toUpperCase().padStart(2, '0')}H`);
+    }
+  }, [ioState]);
   useEffect(() => {
     lineAddressesRef.current = lineAddresses;
   }, [lineAddresses]);
@@ -159,9 +165,20 @@ export default function Dashboard() {
   }, [breakpoints]);
 
   const sendInput = () => {
-    if (!ioInput.trim()) return;
-    log(`Input queued: ${ioInput}`);
-    setIoInput('');
+    const port = Number.parseInt(ioPort, 16);
+    const value = Number.parseInt(ioValue, 16);
+    if (!Number.isInteger(port) || port < 0 || port > 0xff || !Number.isInteger(value) || value < 0 || value > 0xff) {
+      log('ERROR: Port and value must be hexadecimal bytes from 00H to FFH.');
+      return;
+    }
+    sendIoInput(port, value, (result) => {
+      if (!result?.success) {
+        log(`ERROR: ${result?.error || 'Unable to queue input.'}`);
+        return;
+      }
+      log(`Input queued: ${value.toString(16).toUpperCase().padStart(2, '0')}H on port ${port.toString(16).toUpperCase().padStart(2, '0')}H.`);
+      setIoValue('');
+    });
   };
 
   const readMemoryByte = async () => {
@@ -194,7 +211,7 @@ export default function Dashboard() {
         <RegisterPanel registers={registers} />
         <MachineCodePanel machineCode={machineCode} />
         <MemoryPanel address={memoryAddress} error={memoryError} memory={memory} onAddressChange={setMemoryAddress} onRead={readMemoryByte} />
-        <ConsolePanel input={ioInput} lines={consoleLines} onInputChange={setIoInput} onSend={sendInput} />
+        <ConsolePanel lines={consoleLines} onPortChange={setIoPort} onSend={sendInput} onValueChange={setIoValue} port={ioPort} value={ioValue} />
       </div>
       <footer className="dashboard-footer"><span>8085 MICROCONTROLLER SIMULATOR</span><span>Backend: localhost:3000</span><span>Socket.IO stream enabled</span></footer>
     </main>

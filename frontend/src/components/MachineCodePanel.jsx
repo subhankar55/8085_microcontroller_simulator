@@ -3,7 +3,7 @@ import { formatHex } from './RegisterPanel.jsx';
 
 export default function MachineCodePanel({ machineCode }) {
   return (
-    <Panel eyebrow="Assembler output" title="Machine code" actions={<span className="panel-meta">{machineCode.length} BYTES</span>}>
+    <Panel className="machine-panel" eyebrow="Assembler output" title="Machine code" actions={<span className="panel-meta">{machineCode.length} BYTES</span>}>
       <div className="machine-code-grid">
         <div className="machine-code-header"><span>ADDRESS</span><span>OPCODE</span><span>DECIMAL</span></div>
         {machineCode.length ? machineCode.map((byte) => (

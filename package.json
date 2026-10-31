@@ -7,11 +7,12 @@
   "scripts": {
     "build": "cmake-js compile --directory Core_engine",
     "rebuild": "cmake-js rebuild --directory Core_engine",
-    "start": "node backend/server.js"
+    "start": "node --env-file=.env backend/server.js"
   },
   "dependencies": {
     "cors": "^2.8.5",
     "express": "^5.1.0",
+    "bullmq": "^5.61.0",
     "node-addon-api": "^8.5.0",
     "socket.io": "^4.8.1"
   },
