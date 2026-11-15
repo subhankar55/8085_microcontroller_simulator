@@ -29,6 +29,11 @@ export function useSimulatorWebSocket() {
     });
     socket.on('ioEvent', (event) => {
       setIoState((current) => ({ ...current, ...event }));
+      if (event?.direction === 'in') setExecutionState('running');
+    });
+    socket.on('ioInputRequest', (event) => {
+      setIoState((current) => ({ ...current, ...event }));
+      setExecutionState('waiting-input');
     });
     return () => {
       socket.disconnect();

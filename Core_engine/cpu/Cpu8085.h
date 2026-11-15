@@ -45,6 +45,7 @@ public:
     CpuState GetState() const;
     void SetIoHandlers(std::function<uint8_t(uint8_t)> inputHandler,
         std::function<void(uint8_t, uint8_t)> outputHandler);
+    void SetInputRequestHandler(std::function<void(uint8_t)> requestHandler);
 
 private:
     void Execute(uint8_t opcode);
@@ -72,6 +73,7 @@ private:
     bool breakpointHit_ = false;
     std::function<uint8_t(uint8_t)> inputHandler_;
     std::function<void(uint8_t, uint8_t)> outputHandler_;
+    std::function<void(uint8_t)> inputRequestHandler_;
     std::atomic<bool> isHalted_{false};
     mutable std::mutex mutex_;
 };

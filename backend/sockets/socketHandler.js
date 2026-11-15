@@ -32,7 +32,14 @@ function broadcastRegisterState(state) {
   }
 }
 
+function broadcastInputRequest(port) {
+  if (io) {
+    io.emit('ioInputRequest', { direction: 'request', port });
+  }
+}
+
 export {
   registerSocketHandlers,
   broadcastRegisterState,
+  broadcastInputRequest,
 };

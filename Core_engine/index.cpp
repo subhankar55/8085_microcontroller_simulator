@@ -68,11 +68,33 @@ private:
         if (info.Length() < 1 || !info[0].IsFunction()) {
             throw Napi::TypeError::New(env, "Run expects a callback");
         }
+        if (info.Length() > 1 && !info[1].IsFunction()) {
+            throw Napi::TypeError::New(env, "Run input request callback must be a function");
+        }
         PauseWorker();
         stopRequested_.store(false);
         auto callback = info[0].As<Napi::Function>();
         auto tsfn = Napi::ThreadSafeFunction::New(env, callback, "8085-run", 0, 1);
-        worker_ = std::thread([this, tsfn]() mutable {
+        std::shared_ptr<Napi::ThreadSafeFunction> requestTsfn;
+        if (info.Length() > 1) {
+            requestTsfn = std::make_shared<Napi::ThreadSafeFunction>(
+                Napi::ThreadSafeFunction::New(
+                    env,
+                    info[1].As<Napi::Function>(),
+                    "8085-input-request",
+                    0,
+                    1));
+            cpu_.SetInputRequestHandler([requestTsfn](uint8_t port) {
+                requestTsfn->BlockingCall(new uint8_t(port),
+                    [](Napi::Env callbackEnv, Napi::Function callback, uint8_t* requestedPort) {
+                        callback.Call({Napi::Number::New(callbackEnv, *requestedPort)});
+                        delete requestedPort;
+                    });
+            });
+        } else {
+            cpu_.SetInputRequestHandler({});
+        }
+        worker_ = std::thread([this, tsfn, requestTsfn]() mutable {
             while (!stopRequested_.load()) {
                 try {
                     const auto state = cpu_.Step();
@@ -88,6 +110,7 @@ private:
                 }
             }
             tsfn.Release();
+            if (requestTsfn) requestTsfn->Release();
         });
         return env.Undefined();
     }
@@ -201,7 +224,9 @@ private:
 
     void PauseWorker() {
         stopRequested_.store(true);
+        ioBuffer_.CancelPendingReads();
         if (worker_.joinable()) worker_.join();
+        cpu_.SetInputRequestHandler({});
     }
 
     simulator::Memory memory_;

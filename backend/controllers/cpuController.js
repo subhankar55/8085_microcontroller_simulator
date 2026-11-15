@@ -2,7 +2,7 @@ import { getCoreEngine } from '../utils/coreEngine.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
 import { sendError } from '../utils/errorResponse.js';
 import { sendSuccess } from '../utils/successResponse.js';
-import { broadcastRegisterState } from '../sockets/socketHandler.js';
+import { broadcastInputRequest, broadcastRegisterState } from '../sockets/socketHandler.js';
 import { enqueueInput } from '../utils/ioQueue.js';
 
 function parseNumber(value, fieldName, maximum = 0xffff) {
@@ -61,7 +61,8 @@ const run = asyncHandler(async (_request, response) => {
         registers: state,
         executionState: state.halted ? 'halted' : 'running',
       });
-
+    }, (port) => {
+      broadcastInputRequest(port);
     });
     return sendSuccess(response, {
       executionState: 'running',

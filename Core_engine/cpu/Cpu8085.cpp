@@ -40,7 +40,13 @@ CpuState Cpu8085::Step() {
         state_.halted = true;
         return state_;
     }
-    Execute(FetchByte());
+    const auto previousState = state_;
+    try {
+        Execute(FetchByte());
+    } catch (...) {
+        state_ = previousState;
+        throw;
+    }
     return state_;
 }
 
@@ -156,6 +162,7 @@ void Cpu8085::Call(uint16_t address) {
 }
 
 uint8_t Cpu8085::Input(uint8_t port) {
+    if (inputRequestHandler_) inputRequestHandler_(port);
     return inputHandler_ ? inputHandler_(port) : 0;
 }
 
@@ -305,6 +312,11 @@ void Cpu8085::SetIoHandlers(std::function<uint8_t(uint8_t)> inputHandler, std::f
     std::lock_guard lock(mutex_);
     inputHandler_ = std::move(inputHandler);
     outputHandler_ = std::move(outputHandler);
+}
+
+void Cpu8085::SetInputRequestHandler(std::function<void(uint8_t)> requestHandler) {
+    std::lock_guard lock(mutex_);
+    inputRequestHandler_ = std::move(requestHandler);
 }
 
 CpuState Cpu8085::GetState() const {

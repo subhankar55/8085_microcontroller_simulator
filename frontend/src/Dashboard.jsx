@@ -72,6 +72,9 @@ export default function Dashboard() {
     if (ioState.direction === 'out' && Number.isInteger(ioState.port) && Number.isInteger(ioState.value)) {
       log(`Output: port ${ioState.port.toString(16).toUpperCase().padStart(2, '0')}H = ${ioState.value.toString(16).toUpperCase().padStart(2, '0')}H`);
     }
+    if (ioState.direction === 'request' && Number.isInteger(ioState.port)) {
+      log(`Waiting for input on port ${ioState.port.toString(16).toUpperCase().padStart(2, '0')}H.`);
+    }
   }, [ioState]);
   useEffect(() => {
     lineAddressesRef.current = lineAddresses;
